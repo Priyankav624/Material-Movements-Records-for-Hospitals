@@ -32,7 +32,7 @@ export const createUser = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
 
-    if (!["Admin", "Doctor", "Store Manager", "Staff"].includes(role)) {
+    if (!["Doctor", "Store Manager", "Staff"].includes(role)) {
       return res.status(400).json({ message: "Invalid Role" });
     }
 

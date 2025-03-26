@@ -1,0 +1,104 @@
+/* Container Styling */
+.inventory-container {
+    padding: 20px;
+    text-align: center;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Page Title */
+  .inventory-title {
+    font-size: 28px;
+    font-weight: bold;
+    color: white;
+    margin-bottom: 20px;
+  }
+  
+  /* Table Styling */
+  .inventory-table {
+    width: 90%;
+    max-width: 1000px;
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  }
+  
+  .inventory-table th,
+  .inventory-table td {
+    padding: 12px;
+    text-align: left;
+  }
+  
+  .inventory-table th {
+    background: #667eea;
+    color: white;
+    font-weight: bold;
+  }
+  
+  .inventory-table tbody tr:nth-child(even) {
+    background: #f8f9fa;
+  }
+  
+  /* Action Buttons */
+  .action-btn {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: 0.2s;
+  }
+  
+  .edit-btn {
+    background: #3498db;
+    color: white;
+    margin-right: 10px;
+  }
+  
+  .edit-btn:hover {
+    background: #2980b9;
+  }
+  
+  .delete-btn {
+    background: #e74c3c;
+    color: white;
+  }
+  
+  .delete-btn:hover {
+    background: #c0392b;
+  }
+  
+  /* Error & Loading Messages */
+  .error-message,
+  .loading-message {
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 20px;
+  }
+  
+  .error-message {
+    color: red;
+  }
+  
+  .loading-message {
+    font-style: italic;
+    color: white;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 600px) {
+    .inventory-table {
+      width: 100%;
+    }
+    .inventory-table th,
+    .inventory-table td {
+      font-size: 14px;
+      padding: 10px;
+    }
+  }
+  

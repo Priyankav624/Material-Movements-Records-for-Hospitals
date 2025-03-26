@@ -3,13 +3,13 @@ import { useState, useEffect } from "react";
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const userName = localStorage.getItem("name") || User;
-  const userRole = localStorage.getItem("role"); 
-  const [menuOpen, setMenuOpen] = useState(false); 
+  const userName = localStorage.getItem("name") || "User";
+  const userRole = localStorage.getItem("role");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!localStorage.getItem("token")) {
-      navigate("/"); // Ensure user is logged in
+      navigate("/");
     }
   }, [navigate]);
 
@@ -18,23 +18,29 @@ const Navbar = () => {
     navigate("/");
   };
 
-  // Define role-based options
+  // Role-based Navigation Links
   const roleBasedOptions = {
     "Admin": [
-      { name: "View Reports", path: "/admin-reports" }
+      { name: "Dashboard", path: "/adminHome" },
+      { name: "Create Users", path: "/createusers" },
+      { name: "Approve Requests", path: "/manage-requests" }
     ],
     "Store Manager": [
-      { name: "Add Material", path: "/material-entry" }, 
+      { name: "Dashboard", path: "/storeHome" },
+      { name: "Add Material", path: "/material-entry" },
+      { name: "Manage Inventory", path: "/inventory" },
       { name: "View Materials", path: "/materials" },
-      { name: "Inventory", path: "/inventory" },
+      { name: "Approve Requests", path: "/manage-requests" }
     ],
     "Doctor": [
-      { name: "Request Materials", path: "/doctor-request" },
-      { name: "View Reports", path: "/doctor-reports" }
+      { name: "Dashboard", path: "/doctorHome" },
+      { name: "Request Materials", path: "/request-material" },
+      { name: "Track Requests", path: "/track-requests" } 
     ],
     "Staff": [
-      { name: "Issue Materials", path: "/staff-issue" },
-      { name: "Track Requests", path: "/staff-track" }
+      { name: "Dashboard", path: "/staffHome" },
+      { name: "Request Materials", path: "/request-material" },
+      { name: "Track Requests", path: "/track-requests" } 
     ]
   };
 
@@ -47,8 +53,7 @@ const Navbar = () => {
       background: "#282c34",
       color: "white"
     }}>
-      
-
+      {/* Menu Button */}
       <div style={{ position: "relative" }}>
         <button 
           onClick={() => setMenuOpen(!menuOpen)} 
@@ -56,11 +61,11 @@ const Navbar = () => {
             background: "none",
             border: "none",
             color: "white",
-            fontSize: "18px",
+            fontSize: "19px",
             cursor: "pointer"
           }}
         >
-          ☰ 
+          ☰
         </button>
         
         {menuOpen && (
@@ -93,15 +98,16 @@ const Navbar = () => {
       </div>
 
       {/* Welcome Message */}
-      <div style={{ fontSize: "18px" }}>Welcome, {userName}</div>
+      <div style={{ fontSize: "28px" }}>Welcome, {userName}</div>
 
       {/* Logout Button */}
       <button 
         onClick={handleLogout} 
         style={{ 
-          background: "red", 
+          width: "100px",
+          background: "grey", 
           color: "white", 
-          padding: "8px 12px", 
+          padding: "6px 12px", 
           border: "none", 
           cursor: "pointer" 
         }}

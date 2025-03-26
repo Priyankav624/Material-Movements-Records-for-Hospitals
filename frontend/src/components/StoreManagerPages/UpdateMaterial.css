@@ -1,0 +1,93 @@
+/* Container Styling */
+.update-material-container {
+    max-width: 600px;
+    margin: 50px auto;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+  }
+  
+  /* Page Title */
+  .update-material-container h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 24px;
+    font-weight: bold;
+    color: white;
+  }
+  
+  /* Form Styling */
+  .update-material-form label {
+    display: block;
+    margin: 10px 0 5px;
+    font-weight: bold;
+    color: white;
+    text-align: left;
+  }
+  
+  /* Input & Select Fields */
+  .update-material-form input,
+  .update-material-form select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    background: #f8f9fa;
+    color: #333;
+  }
+  
+  /* Focus Effect */
+  .update-material-form input:focus,
+  .update-material-form select:focus {
+    border: 2px solid #667eea;
+    outline: none;
+  }
+  
+  /* Button Styling */
+  .update-material-form button {
+    width: 100%;
+    padding: 10px;
+    background: #3498db;
+    color: white;
+    font-size: 18px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: 0.3s ease;
+  }
+  
+  .update-material-form button:hover {
+    background: #2980b9;
+  }
+  
+  /* Error Message */
+  .error-message {
+    color: red;
+    text-align: center;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 600px) {
+    .update-material-container {
+      width: 90%;
+    }
+  
+    .update-material-form input,
+    .update-material-form select {
+      font-size: 14px;
+      padding: 8px;
+    }
+  
+    .update-material-form button {
+      font-size: 16px;
+      padding: 8px;
+    }
+  }

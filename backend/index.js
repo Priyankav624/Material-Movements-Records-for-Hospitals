@@ -1,9 +1,12 @@
-import authRoutes from "./routes/authRoutes.js"
-import materialRoutes from "./routes/materialRoutes.js"
 import express from "express";
 import connectDB from "./config/db.js";
 import cors from "cors";
 import dotenv from 'dotenv';
+
+import authRoutes from "./routes/authRoutes.js"
+import materialRoutes from "./routes/materialRoutes.js"
+import materialRequestRoutes from "./routes/materialRequestRoutes.js";
+
 dotenv.config();
 
 const app = express();
@@ -14,6 +17,7 @@ connectDB();
 
 app.use("/api/auth", authRoutes);
 app.use("/api/materials", materialRoutes);
+app.use("/api/material-requests", materialRequestRoutes);
 
 app.use((err, req, res, next) => {
   console.error("Error:", err.message);

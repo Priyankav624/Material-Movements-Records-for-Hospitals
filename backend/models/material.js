@@ -56,5 +56,5 @@ const materialSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const Material = mongoose.model("Material", materialSchema);
+const Material = mongoose.models.Material || mongoose.model("Material", materialSchema);
 export default Material; 

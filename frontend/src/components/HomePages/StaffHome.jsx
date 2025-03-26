@@ -3,9 +3,26 @@ import React from "react";
 const StaffHome = () => {
     const userName = localStorage.getItem("name");
 
-    return(
-        
-      <div style={{ fontSize: "18px" }}>Welcome, {userName}</div>
+    const styles = {
+      container: {
+        fontFamily: "Poppins, sans-serif",
+        background: "linear-gradient(135deg, #667eea, #764ba2)",
+        height: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "white",
+      },
+      title: {
+        fontSize: "24px",
+        fontWeight: "bold",
+      },
+    };
+  
+    return (
+      <div style={styles.container}>
+        <h2 style={styles.title}>Welcome, {userName} 👋</h2>
+      </div>
     )
 }
 
