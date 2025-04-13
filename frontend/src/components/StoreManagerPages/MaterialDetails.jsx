@@ -9,23 +9,24 @@ const MaterialList = () => {
 
   useEffect(() => {
     axios
-      .get("http://localhost:5000/api/materials", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      })
-      .then((res) => {
-        console.log("Materials List API Response:", res.data.materials);
-
-        if (Array.isArray(res.data.materials) && res.data.materials.length > 0) {
-          setMaterials(res.data.materials);
-        } else {
-          setMaterials([]); 
-        }
-      })
-      .catch((err) => {
-        console.error("Error fetching materials:", err);
-        setError("Unable to fetch materials. Please try again later.");
-      })
-      .finally(() => setLoading(false));
+    .get("http://localhost:5000/api/materials", {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    })
+    .then((res) => {
+      console.log("Materials List API Response:", res.data.materials);
+  
+      const nonZeroMaterials = res.data.materials.filter(
+        (material) => material.quantity > 0
+      );
+  
+      setMaterials(nonZeroMaterials);
+    })
+    .catch((err) => {
+      console.error("Error fetching materials:", err);
+      setError("Unable to fetch materials. Please try again later.");
+    })
+    .finally(() => setLoading(false));
+  
   }, []);
 
   if (error) return <p style={{ color: "red", textAlign: "center" }}>{error}</p>;
@@ -36,7 +37,8 @@ const MaterialList = () => {
     <div className="materials-container">
       <h2 className="title">Available Materials</h2>
       <div className="materials-grid">
-        {materials.map((material) => (
+      {materials.filter(m => m.quantity > 0).map((material) => (
+
           <div key={material._id} className="material-card">
             <h3>{material.name || "Unnamed Material"}</h3>
             <p><strong>Serial Number:</strong> {material.serialNumber || "N/A"}</p>

@@ -1,13 +1,12 @@
 import MaterialRequest from "../models/materialRequest.js";
 import Material from "../models/material.js";
 
-// ✅ Doctor/Staff can request material
 export const requestMaterial = async (req, res) => {
   try {
     const { materialId, quantity, reason, priority } = req.body;
 
     const request = new MaterialRequest({
-      requestedBy: req.user.id, // Logged-in user ID
+      requestedBy: req.user.id, 
       materialId,
       quantity,
       reason,
@@ -21,7 +20,6 @@ export const requestMaterial = async (req, res) => {
   }
 };
 
-// ✅ Store Manager/Admin can view all material requests
 export const getRequests = async (req, res) => {
   try {
     const requests = await MaterialRequest.find()
@@ -45,26 +43,23 @@ export const updateRequestStatus = async (req, res) => {
     if (!material) return res.status(404).json({ success: false, message: "Material not found" });
 
     if (status === "Approved") {
-      // ✅ Check stock before approval
+
       if (material.quantity < request.quantity) {
         return res.status(400).json({ success: false, message: "Insufficient stock to approve this request." });
       }
 
-      // ✅ Deduct stock
       material.quantity -= request.quantity;
 
-      // ✅ Update material status based on remaining stock
       if (material.quantity === 0) {
         material.status = "Issued";
-      } else if (material.quantity < 5) { // You can set a threshold for low stock
+      } else if (material.quantity < 5) { 
         material.status = "Low Stock";
       } else {
         material.status = "Available";
       }
 
-      await material.save();  // ✅ Save material stock update
-      
-      // ✅ Update request status
+      await material.save();  
+
       request.status = "Approved";
       request.approvedBy = req.user.id;
       request.approvedAt = new Date();
@@ -74,8 +69,7 @@ export const updateRequestStatus = async (req, res) => {
       request.rejectionReason = rejectionReason || "No reason provided";
     }
 
-    await request.save(); // ✅ Save request update
-
+    await request.save();  
     res.status(200).json({ success: true, message: `Request ${status.toLowerCase()} successfully`, request });
 
   } catch (error) {

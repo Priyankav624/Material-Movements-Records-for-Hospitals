@@ -85,7 +85,7 @@ const MaterialInventory = () => {
         </thead>
         <tbody>
           {Array.isArray(materials) && materials.length > 0 ? (
-            materials.map((mat) => (
+         materials.filter((mat) => mat.quantity > 0).map((mat) => (
               <tr key={mat._id}>
                 <td>{mat.name}</td>
                 <td>{mat.category}</td>
