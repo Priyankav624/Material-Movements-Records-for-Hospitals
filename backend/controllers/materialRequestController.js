@@ -1,5 +1,6 @@
 import MaterialRequest from "../models/materialRequest.js";
 import Material from "../models/material.js";
+import ActivityLog from "../models/ActivityLog.js";
 
 export const requestMaterial = async (req, res) => {
   try {
@@ -14,6 +15,7 @@ export const requestMaterial = async (req, res) => {
     });
 
     await request.save();
+
     res.status(201).json({ success: true, message: "Material request submitted successfully", request });
   } catch (error) {
     res.status(500).json({ success: false, message: "Server Error", error: error.message });
@@ -35,15 +37,16 @@ export const getRequests = async (req, res) => {
 export const updateRequestStatus = async (req, res) => {
   try {
     const { status, rejectionReason } = req.body;
-    const request = await MaterialRequest.findById(req.params.id);
+    const request = await MaterialRequest.findById(req.params.id)
+      .populate('materialId')
+      .populate('requestedBy', 'name');
 
-    if (!request) return res.status(404).json({ success: false, message: "Request not found" });
+    if (!request) return res.status(404).json({ message: "Request not found" });
 
     const material = await Material.findById(request.materialId);
-    if (!material) return res.status(404).json({ success: false, message: "Material not found" });
+    if (!material) return res.status(404).json({ message: "Material not found" });
 
     if (status === "Approved") {
-
       if (material.quantity < request.quantity) {
         return res.status(400).json({ success: false, message: "Insufficient stock to approve this request." });
       }
@@ -63,12 +66,11 @@ export const updateRequestStatus = async (req, res) => {
       request.status = "Approved";
       request.approvedBy = req.user.id;
       request.approvedAt = new Date();
-    } 
+    }
     else if (status === "Rejected") {
       request.status = "Rejected";
       request.rejectionReason = rejectionReason || "No reason provided";
     }
-
     await request.save();  
     res.status(200).json({ success: true, message: `Request ${status.toLowerCase()} successfully`, request });
 
@@ -76,8 +78,6 @@ export const updateRequestStatus = async (req, res) => {
     res.status(500).json({ success: false, message: "Server Error", error: error.message });
   }
 };
-
-
 
 export const getMyRequests = async (req, res) => {
   try {

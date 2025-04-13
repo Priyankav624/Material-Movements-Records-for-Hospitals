@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import dotenv from "dotenv";
+import ActivityLog from '../models/ActivityLog.js';
 
 dotenv.config();
 
@@ -20,7 +21,20 @@ export const signIn = async (req, res) => {
 
     const token = jwt.sign({ id: user._id, role: user.role, name: user.name }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
-    res.json({ token, name: user.name, role: user.role });
+    // Log the login activity
+    await ActivityLog.create({
+      userId: user._id,
+      action: 'LOGIN',
+      ipAddress: req.ip
+    });
+
+    res.json({ 
+      token, 
+      name: user.name, 
+      role: user.role,
+      id: user._id,
+      email: user.email
+    });
   } catch (error) {
     res.status(500).json({ message: "Server Error" });
     console.log(error);
@@ -43,8 +57,43 @@ export const createUser = async (req, res) => {
     user = new User({ name, email, password: hashedPassword, role });
 
     await user.save();
+
+    // Log the user creation activity
+    await ActivityLog.create({
+      userId: req.user.id, // Admin who created the user
+      action: 'CREATE_USER',
+      entityType: 'User',
+      entityId: user._id,
+      details: { createdUser: user.email, role: user.role },
+      ipAddress: req.ip
+    });
+
     res.status(201).json({ message: "User Created Successfully" });
   } catch (error) {
     res.status(500).json({ message: "Server Error" });
+  }
+};
+
+export const logout = async (req, res) => {
+  try {
+    // Find the most recent login activity
+    const lastLogin = await ActivityLog.findOne({
+      userId: req.user.id,
+      action: 'LOGIN'
+    }).sort({ timestamp: -1 });
+
+    // Create logout activity
+    await ActivityLog.create({
+      userId: req.user.id,
+      action: 'LOGOUT',
+      ipAddress: req.ip,
+      logoutTime: new Date(),
+      sessionDuration: lastLogin ? 
+        (new Date() - lastLogin.timestamp) / 1000 : null
+    });
+    
+    res.status(200).json({ message: 'Logged out successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Logout failed' });
   }
 };

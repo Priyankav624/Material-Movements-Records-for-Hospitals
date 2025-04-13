@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from "react-route
 import Login from "./components/Login.jsx";
 import ProtectedRoute from "./privateRoute.jsx";
 import Navbar from "./components/Navbar";
-import CreateUser from "./components/CreateUser.jsx";
+import CreateUser from "./components/AdminPages/CreateUser.jsx";
 import AdminHome from "./components/HomePages/AdminHome.jsx";
 import StoreHome from "./components/HomePages/StoreHome.jsx";
 import DoctorHome from "./components/HomePages/DoctorHome.jsx";
@@ -14,6 +14,7 @@ import ViewMaterials from "./components/StoreManagerPages/MaterialDetails.jsx";
 import ManageRequests from "./components/ManageRequest.jsx";
 import RequestMaterial from "./components/RequestMaterial.jsx";
 import TrackRequests from "./components/TrackRequest.jsx";
+import ActivityLogs from './components/AdminPages/ActivityLogs';
 
 const Layout = ({ children }) => {
   const location = useLocation();
@@ -51,6 +52,9 @@ const App = () => {
           <Route path="/request-material" element={<ProtectedRoute role={["Doctor", "Staff"]}><RequestMaterial/></ProtectedRoute>} />
           <Route path="/manage-requests" element={<ProtectedRoute role={["Store Manager", "Admin"]}><ManageRequests /></ProtectedRoute>} />
            <Route path="/track-requests" element={<ProtectedRoute role={["Doctor", "Staff"]}><TrackRequests/></ProtectedRoute>} />  
+
+           <Route path="/activity-logs" element={<ProtectedRoute role="Admin"><ActivityLogs /></ProtectedRoute>} 
+/>
         </Routes>
       </Layout>
     </Router>
