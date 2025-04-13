@@ -18,11 +18,16 @@ const ActivityLogs = () => {
         const response = await axios.get('http://localhost:5000/api/activity-logs', {
           headers: { Authorization: `Bearer ${token}` }
         });
-        
-        setLogs(response.data.data || []);
+
+        if (response.data.success) {
+          setLogs(response.data.data || []);
+        } else {
+          throw new Error(response.data.message || 'Failed to fetch logs');
+        }
       } catch (error) {
-        console.error('Error fetching activity logs:', error);
-        setError('Failed to fetch activity logs. Please try again later.');
+        console.error('Error:', error);
+        setError(error.response?.data?.message || error.message || 'Failed to fetch activity logs');
+        setLogs([]);
       } finally {
         setLoading(false);
       }

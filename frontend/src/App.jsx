@@ -14,7 +14,7 @@ import ViewMaterials from "./components/StoreManagerPages/MaterialDetails.jsx";
 import ManageRequests from "./components/ManageRequest.jsx";
 import RequestMaterial from "./components/RequestMaterial.jsx";
 import TrackRequests from "./components/TrackRequest.jsx";
-import ActivityLogs from './components/AdminPages/ActivityLogs';
+import ActivityLogs from './components/AdminPages/ActivityLogs.jsx';
 
 const Layout = ({ children }) => {
   const location = useLocation();

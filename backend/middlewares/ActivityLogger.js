@@ -1,6 +1,6 @@
 import ActivityLog from '../models/ActivityLog.js';
 
-export const logActivity = async (req, action, entityType = null, entityId = null, details = {}) => {
+const logActivity = async (req, action, entityType = null, entityId = null, details = {}) => {
   try {
     await ActivityLog.create({
       userId: req.user.id,
