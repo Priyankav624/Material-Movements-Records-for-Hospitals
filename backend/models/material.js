@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const materialSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
+    name: { type: String, required: true, trim: true },
 
     category: {
       type: String,

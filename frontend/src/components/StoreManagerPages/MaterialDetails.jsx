@@ -6,10 +6,11 @@ import 'react-toastify/dist/ReactToastify.css';
 import "./MaterialDetails.css";
 
 const MaterialList = () => {
-  const [materials, setMaterials] = useState([]);
+  const [allMaterials, setAllMaterials] = useState([]); // Store all materials
+  const [displayedMaterials, setDisplayedMaterials] = useState([]); // Materials to display
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("Available");
+  const [statusFilter, setStatusFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -22,6 +23,11 @@ const MaterialList = () => {
     fetchMaterials();
   }, []);
 
+  useEffect(() => {
+    // Apply filters whenever filters or search term changes
+    applyFilters();
+  }, [allMaterials, statusFilter, categoryFilter, searchTerm]);
+
   const fetchMaterials = () => {
     setLoading(true);
     axios
@@ -29,8 +35,15 @@ const MaterialList = () => {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       })
       .then((res) => {
-        const materialsData = res.data.materials || res.data;
-        setMaterials(Array.isArray(materialsData) ? materialsData : []);
+        const materialsData = Array.isArray(res.data) ? res.data : 
+                            (res.data.materials || []);
+        
+        // Filter out deleted items but include all statuses
+        const filtered = materialsData.filter(material => 
+          material.status !== "Deleted"
+        );
+        
+        setAllMaterials(filtered);
         setLoading(false);
       })
       .catch((err) => {
@@ -41,33 +54,38 @@ const MaterialList = () => {
       });
   };
 
-  const filteredMaterials = materials.filter(material => {
-    const searchLower = searchTerm.toLowerCase();
-    const nameMatch = material.name?.toLowerCase().includes(searchLower);
-    const serialMatch = material.serialNumber?.toLowerCase().includes(searchLower);
-    
-    return (
-      (searchTerm === "" || nameMatch || serialMatch) &&
-      (statusFilter === "All" || material.status === statusFilter) &&
-      (categoryFilter === "All" || material.category === categoryFilter) &&
-      material.status !== "Deleted" &&
-      material.quantity > 0
-    );
-  });
+  const applyFilters = () => {
+    const filtered = allMaterials.filter(material => {
+      const searchLower = searchTerm.toLowerCase();
+      const nameMatch = material.name?.toLowerCase().includes(searchLower);
+      const serialMatch = material.serialNumber?.toLowerCase().includes(searchLower);
+      
+      return (
+        (searchTerm === "" || nameMatch || serialMatch) &&
+        (statusFilter === "All" || material.status === statusFilter) &&
+        (categoryFilter === "All" || material.category === categoryFilter)
+      );
+    });
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredMaterials.length / itemsPerPage);
-  const currentItems = filteredMaterials.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+    setDisplayedMaterials(filtered);
+    setCurrentPage(1); // Reset to first page when filters change
+  };
+
+  // Get current items for pagination
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = displayedMaterials.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(displayedMaterials.length / itemsPerPage);
 
   const resetFilters = () => {
     setSearchTerm("");
-    setStatusFilter("Available");
+    setStatusFilter("All");
     setCategoryFilter("All");
-    setCurrentPage(1);
   };
+
+  console.log('Total items:', displayedMaterials.length);
+  console.log('Total pages:', totalPages);
+  console.log('Current page:', currentPage);
 
   if (error) return <p style={{ color: "red", textAlign: "center" }}>{error}</p>;
   if (loading) return <p style={{ textAlign: "center" }}>Loading materials...</p>;
@@ -76,7 +94,7 @@ const MaterialList = () => {
     <div className="materials-container">
       <ToastContainer />
       <div className="material-list-header">
-        <h2 className="title">Available Materials</h2>
+        <h2 className="title">Material Inventory ({displayedMaterials.length} items)</h2>
         
         <div className="material-filters">
           <div className="filter-group search-group">
@@ -99,10 +117,7 @@ const MaterialList = () => {
             <label>Status:</label>
             <select 
               value={statusFilter} 
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(e) => setStatusFilter(e.target.value)}
               className="filter-select"
             >
               {statusOptions.map(option => (
@@ -115,10 +130,7 @@ const MaterialList = () => {
             <label>Category:</label>
             <select 
               value={categoryFilter} 
-              onChange={(e) => {
-                setCategoryFilter(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(e) => setCategoryFilter(e.target.value)}
               className="filter-select"
             >
               {categoryOptions.map(option => (
@@ -145,6 +157,7 @@ const MaterialList = () => {
                 <p><strong>Status:</strong> 
                   <span className={`status-badge ${material.status.toLowerCase().replace(' ', '-')}`}>
                     {material.status}
+                    {material.status === "Issued" && " (0 in stock)"}
                   </span>
                 </p>
                 <p><strong>Category:</strong> {material.category || "N/A"}</p>
@@ -164,7 +177,7 @@ const MaterialList = () => {
             ))}
           </div>
 
-          {/* Pagination Controls */}
+          {/* Pagination Controls - Only show if more than one page */}
           {totalPages > 1 && (
             <div className="pagination-controls">
               <button
@@ -176,7 +189,7 @@ const MaterialList = () => {
               </button>
               
               <span className="page-info">
-                Page {currentPage} of {totalPages}
+                Page {currentPage} of {totalPages} ({displayedMaterials.length} items total)
               </span>
               
               <button

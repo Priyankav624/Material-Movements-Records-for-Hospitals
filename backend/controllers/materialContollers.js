@@ -2,9 +2,9 @@ import Material from "../models/material.js";
 
 export const addMaterial = async (req, res) => {
   try {
-    let { name, category, serialNumber, quantity, expiryDate, source, vendorDetails } = req.body;
+    let { name, category, serialNumber, quantity, expiryDate, source, vendorName, vendorContact } = req.body;
 
-    // Validation
+    // Basic validation
     name = name?.trim();
     if (!name || !category || !source) {
       return res.status(400).json({
@@ -13,11 +13,22 @@ export const addMaterial = async (req, res) => {
       });
     }
 
-    if (isNaN(quantity) || quantity < 1) {
+    // Quantity validation
+    quantity = Number(quantity);
+    if (isNaN(quantity) ){
       return res.status(400).json({
         success: false,
-        message: "Quantity must be at least 1"
+        message: "Quantity must be a number"
       });
+    }
+
+    // Handle expiry date
+    let status = "Available";
+    if (expiryDate) {
+      const expiry = new Date(expiryDate);
+      if (expiry <= new Date()) {
+        status = "Expired";
+      }
     }
 
     // Generate serial number if not provided
@@ -36,16 +47,20 @@ export const addMaterial = async (req, res) => {
       });
     }
 
+    // Create material
     const material = new Material({
       name,
       category,
       serialNumber,
       quantity,
-      expiryDate,
+      expiryDate: expiryDate || undefined, // Only set if provided
       source,
-      vendorDetails,
+      vendorDetails: source === "Vendor" ? {
+        name: vendorName,
+        contact: vendorContact
+      } : undefined,
       addedBy: req.user.id,
-      status: quantity > 0 ? "Available" : "Low Stock"
+      status: quantity <= 0 ? "Low Stock" : status
     });
 
     await material.save();
@@ -56,6 +71,7 @@ export const addMaterial = async (req, res) => {
       material
     });
   } catch (error) {
+    console.error("Error adding material:", error);
     res.status(500).json({
       success: false,
       message: "Failed to add material",
@@ -203,7 +219,7 @@ export const getMaterialById = async (req, res) => {
     const material = await Material.findOne({
       _id: req.params.id,
       status: { $ne: "Deleted" }
-    });
+    }).populate('addedBy', 'name email');
 
     if (!material) {
       return res.status(404).json({
@@ -214,7 +230,17 @@ export const getMaterialById = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      material
+      material: {
+        _id: material._id,
+        name: material.name,
+        category: material.category,
+        quantity: material.quantity,
+        expiryDate: material.expiryDate,
+        source: material.source,
+        vendorDetails: material.vendorDetails || {},
+        status: material.status,
+        addedBy: material.addedBy
+      }
     });
   } catch (error) {
     res.status(500).json({
