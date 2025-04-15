@@ -35,7 +35,6 @@ const handleLogout = async () => {
       { name: "Dashboard", path: "/adminHome" },
       { name: "Create Users", path: "/createusers" },
       { name: "Approve Requests", path: "/manage-requests" },
-      {name: "Activity Logs", path: "/activity-logs"}
     ],
     "Store Manager": [
       { name: "Dashboard", path: "/storeHome" },

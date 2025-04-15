@@ -1,5 +1,8 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { showSuccess, showError } from "./Notification";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import "./ManageRequests.css";
 
 const ManageRequests = () => {
@@ -17,106 +20,162 @@ const ManageRequests = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:5000/api/material-requests", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setRequests(response.data.requests);
+      const response = await axios.get(
+        "http://localhost:5000/api/material-requests",
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setRequests(response.data.requests || []);
     } catch (error) {
-      setError("Failed to fetch requests.");
+      console.error("Error fetching requests:", error);
+      setError("Failed to load requests. Please try again.");
+      showError(error.response?.data?.message || "Failed to fetch requests");
     } finally {
       setLoading(false);
     }
   };
 
   const handleAction = async (id, status) => {
-    if (status === "Rejected" && !rejectionReason.trim()) {
-      alert("Please provide a reason for rejection.");
-      return;
-    }
-
-    const confirmAction = window.confirm(`Are you sure you want to ${status.toLowerCase()} this request?`);
-    if (!confirmAction) return;
-
     try {
+      if (status === "Rejected" && !rejectionReason.trim()) {
+        showError("Please provide a rejection reason");
+        return;
+      }
+
+      if (!window.confirm(`Are you sure you want to ${status.toLowerCase()} this request?`)) {
+        return;
+      }
+
       const token = localStorage.getItem("token");
-      await axios.put(
+      const response = await axios.put(
         `http://localhost:5000/api/material-requests/${id}`,
-        { status, rejectionReason: status === "Rejected" ? rejectionReason : undefined },
+        { 
+          status, 
+          ...(status === "Rejected" && { rejectionReason }) 
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      alert(`Request ${status.toLowerCase()} successfully!`);
-      fetchRequests();
-
-      if (status === "Rejected") {
+      if (response.data.success) {
+        showSuccess(response.data.message);
+        await fetchRequests();
         setRejectionReason("");
         setSelectedRequestId(null);
+      } else {
+        showError(response.data.message || "Action failed");
       }
     } catch (error) {
-      alert("Failed to update request.");
+      console.error("Request action failed:", error);
+      showError(
+        error.response?.data?.message || 
+        "Failed to process request. Please try again."
+      );
+      
+      if (error.response?.status === 400) {
+        fetchRequests(); // Refresh if stock issue
+      }
     }
   };
 
-  if (loading) return <p className="loading-text">Loading requests...</p>;
-  if (error) return <p className="error-text">{error}</p>;
+  if (loading) return <div className="loading">Loading requests...</div>;
+  if (error) return <div className="error">{error}</div>;
 
   return (
-    <div className="container">
-      <h2 className="title">Manage Material Requests</h2>
+    <div className="manage-requests">
+      <ToastContainer />
+      <h2>Manage Material Requests</h2>
 
       {requests.length === 0 ? (
-        <p className="no-requests">No requests available.</p>
+        <p className="no-requests">No requests available</p>
       ) : (
-        requests.map((req) => (
-          <div key={req._id} className="request-card">
-            <p className="material-info">
-              <strong>{req.materialId?.name} ({req.quantity})</strong>
-            </p>
-            <p className="request-info">
-              <strong>Requested By:</strong> {req.requestedBy?.name} ({req.requestedBy?.role})
-            </p>
-            <p className={`priority ${req.priority.toLowerCase()}`}>
-              <strong>Priority:</strong> {req.priority}
-            </p>
-            <p className="status">
-              <strong>Status:</strong>{" "}
-              <span className={req.status.toLowerCase()}>{req.status}</span>
-            </p>
+        <div className="requests-list">
+          {requests.map(request => (
+            <div key={request._id} className={`request-card ${request.status.toLowerCase()}`}>
+              <div className="request-header">
+                <h3>
+                  {request.materialId?.name || "Material Not Found"}
+                  {request.materialId?.category && (
+                    <span className="category">({request.materialId.category})</span>
+                  )}
+                </h3>
+                <span className={`status ${request.status.toLowerCase()}`}>
+                  {request.status}
+                </span>
+              </div>
 
-            {req.status === "Rejected" && (
-              <p className="rejection-reason">
-                <strong>Rejection Reason:</strong> {req.rejectionReason}
-              </p>
-            )}
-
-            {req.status === "Pending" && (
-              <div className="actions">
-                <button onClick={() => handleAction(req._id, "Approved")} className="approve-btn">
-                  Approve
-                </button>
-
-                <button onClick={() => setSelectedRequestId(req._id)} className="reject-btn">
-                  Reject
-                </button>
-
-                {selectedRequestId === req._id && (
-                  <div className="rejection-box">
-                    <input
-                      type="text"
-                      placeholder="Rejection reason"
-                      value={rejectionReason}
-                      onChange={(e) => setRejectionReason(e.target.value)}
-                      className="rejection-input"
-                    />
-                    <button onClick={() => handleAction(req._id, "Rejected")} className="confirm-btn">
-                      Confirm
-                    </button>
-                  </div>
+              <div className="request-details">
+                <p>
+                  <strong>Quantity:</strong> {request.quantity}
+                  {request.materialId?.quantity !== undefined && (
+                    <span className="stock">
+                      (Stock: {request.materialId.quantity})
+                    </span>
+                  )}
+                </p>
+                <p>
+                  <strong>Requested By:</strong> {request.requestedBy?.name} ({request.requestedBy?.role})
+                </p>
+                <p>
+                  <strong>Priority:</strong> 
+                  <span className={`priority ${request.priority.toLowerCase()}`}>
+                    {request.priority}
+                  </span>
+                </p>
+                {request.reason && (
+                  <p className="reason">
+                    <strong>Reason:</strong> {request.reason}
+                  </p>
                 )}
               </div>
-            )}
-          </div>
-        ))
+
+              {request.status === "Pending" && (
+                <div className="request-actions">
+                  <button
+                    onClick={() => handleAction(request._id, "Approved")}
+                    className="approve"
+                    disabled={request.materialId?.quantity < request.quantity}
+                    title={
+                      request.materialId?.quantity < request.quantity 
+                        ? "Insufficient stock to approve" 
+                        : ""
+                    }
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => setSelectedRequestId(request._id)}
+                    className="reject"
+                  >
+                    Reject
+                  </button>
+
+                  {selectedRequestId === request._id && (
+                    <div className="rejection-form">
+                      <input
+                        type="text"
+                        placeholder="Enter rejection reason..."
+                        value={rejectionReason}
+                        onChange={(e) => setRejectionReason(e.target.value)}
+                        required
+                      />
+                      <button
+                        onClick={() => handleAction(request._id, "Rejected")}
+                        className="confirm-reject"
+                      >
+                        Confirm Rejection
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {request.status === "Rejected" && request.rejectionReason && (
+                <div className="rejection-reason">
+                  <strong>Rejection Reason:</strong> {request.rejectionReason}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

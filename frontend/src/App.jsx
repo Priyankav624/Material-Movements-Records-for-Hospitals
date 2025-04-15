@@ -14,7 +14,6 @@ import ViewMaterials from "./components/StoreManagerPages/MaterialDetails.jsx";
 import ManageRequests from "./components/ManageRequest.jsx";
 import RequestMaterial from "./components/RequestMaterial.jsx";
 import TrackRequests from "./components/TrackRequest.jsx";
-import ActivityLogs from './components/AdminPages/ActivityLogs.jsx';
 
 const Layout = ({ children }) => {
   const location = useLocation();
@@ -51,10 +50,9 @@ const App = () => {
          {/* Module 3 - Material Request System */}
           <Route path="/request-material" element={<ProtectedRoute role={["Doctor", "Staff"]}><RequestMaterial/></ProtectedRoute>} />
           <Route path="/manage-requests" element={<ProtectedRoute role={["Store Manager", "Admin"]}><ManageRequests /></ProtectedRoute>} />
+          <Route path="/manage-requests/:id" element={<ProtectedRoute role={["Store Manager", "Admin"]}><ManageRequests /></ProtectedRoute>} />
            <Route path="/track-requests" element={<ProtectedRoute role={["Doctor", "Staff"]}><TrackRequests/></ProtectedRoute>} />  
 
-           <Route path="/activity-logs" element={<ProtectedRoute role="Admin"><ActivityLogs /></ProtectedRoute>} 
-/>
         </Routes>
       </Layout>
     </Router>

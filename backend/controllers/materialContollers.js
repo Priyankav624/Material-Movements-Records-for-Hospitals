@@ -1,33 +1,42 @@
-import Material from "../models/material.js"; 
+import Material from "../models/material.js";
 
-// Add Material
 export const addMaterial = async (req, res) => {
   try {
     let { name, category, serialNumber, quantity, expiryDate, source, vendorDetails } = req.body;
 
-    // Trim values & Validate
-    name = name.trim();
-    serialNumber = serialNumber?.trim();
+    // Validation
+    name = name?.trim();
     if (!name || !category || !source) {
-      return res.status(400).json({ message: "Name, Category, and Source are required" });
-    }
-    if (quantity !== undefined && (isNaN(quantity) || quantity < 1)) {
-      return res.status(400).json({ message: "Quantity must be at least 1" });
+      return res.status(400).json({
+        success: false,
+        message: "Name, category and source are required"
+      });
     }
 
-    // Auto-increment serial number if not provided
+    if (isNaN(quantity) || quantity < 1) {
+      return res.status(400).json({
+        success: false,
+        message: "Quantity must be at least 1"
+      });
+    }
+
+    // Generate serial number if not provided
+    serialNumber = serialNumber?.trim();
     if (!serialNumber) {
       const lastMaterial = await Material.findOne().sort("-createdAt");
       serialNumber = lastMaterial ? `MAT-${lastMaterial._id}` : "MAT-1";
     }
 
-    // Check for duplicate serial number
-    if (serialNumber) {
-      const materialExists = await Material.findOne({ serialNumber });
-      if (materialExists) return res.status(400).json({ message: "Serial Number Already Exists" });
+    // Check for duplicate serial
+    const exists = await Material.findOne({ serialNumber });
+    if (exists) {
+      return res.status(400).json({
+        success: false,
+        message: "Material with this serial number already exists"
+      });
     }
 
-    const newMaterial = new Material({
+    const material = new Material({
       name,
       category,
       serialNumber,
@@ -36,88 +45,182 @@ export const addMaterial = async (req, res) => {
       source,
       vendorDetails,
       addedBy: req.user.id,
+      status: quantity > 0 ? "Available" : "Low Stock"
     });
 
-    await newMaterial.save();
-    res.status(201).json({ message: "Material Added Successfully", material: newMaterial });
+    await material.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Material added successfully",
+      material
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Failed to add material",
+      error: error.message
+    });
   }
 };
 
-// Update Material
 export const updateMaterial = async (req, res) => {
   try {
-    const { name, category, quantity, expiryDate, source, status, vendorDetails } = req.body;
     const material = await Material.findById(req.params.id);
-
-    if (!material) return res.status(404).json({ message: "Material Not Found" });
-
-    if (name) material.name = name.trim();
-    if (category) material.category = category;
-    if (quantity !== undefined) {
-      if (isNaN(quantity) || quantity < 1) return res.status(400).json({ message: "Quantity must be at least 1" });
-      material.quantity = quantity;
+    if (!material || material.status === "Deleted") {
+      return res.status(404).json({
+        success: false,
+        message: "Material not found"
+      });
     }
-    if (expiryDate) material.expiryDate = expiryDate;
-    if (source) material.source = source;
-    if (status) material.status = status;
-    if (vendorDetails) material.vendorDetails = vendorDetails;
+
+    // Update fields
+    if (req.body.name) material.name = req.body.name.trim();
+    if (req.body.category) material.category = req.body.category;
+    if (req.body.source) material.source = req.body.source;
+    if (req.body.vendorDetails) material.vendorDetails = req.body.vendorDetails;
+
+    // Quantity update
+    if (req.body.quantity !== undefined) {
+      if (isNaN(req.body.quantity) || req.body.quantity < 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Quantity must be a positive number"
+        });
+      }
+      material.quantity = req.body.quantity;
+    }
+
+    // Status update
+    if (req.body.status) {
+      material.status = req.body.status;
+    } else if (material.status !== "Issued") { // Don't auto-update Issued status
+      material.status = material.quantity === 0 ? "Low Stock" :
+                       material.quantity < 5 ? "Low Stock" : "Available";
+    }
+
+    // Expiry date
+    if (req.body.expiryDate) {
+      material.expiryDate = req.body.expiryDate;
+      if (new Date(req.body.expiryDate) <= new Date()) {
+        material.status = "Expired";
+      }
+    }
 
     await material.save();
-    res.status(200).json({ message: "Material Updated", material });
+
+    res.status(200).json({
+      success: true,
+      message: "Material updated successfully",
+      material
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Failed to update material",
+      error: error.message
+    });
   }
 };
 
-// Soft Delete (Marks status as "Deleted")
 export const deleteMaterial = async (req, res) => {
   try {
     const material = await Material.findById(req.params.id);
-    if (!material) return res.status(404).json({ message: "Material Not Found" });
+    if (!material) {
+      return res.status(404).json({
+        success: false,
+        message: "Material not found"
+      });
+    }
 
     if (material.status === "Deleted") {
-      return res.status(400).json({ message: "Material already deleted" });
+      return res.status(400).json({
+        success: false,
+        message: "Material already deleted"
+      });
     }
 
     material.status = "Deleted";
     await material.save();
-    res.status(200).json({ message: "Material Marked as Deleted", material });
+
+    res.status(200).json({
+      success: true,
+      message: "Material deleted successfully"
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete material",
+      error: error.message
+    });
   }
 };
 
-// Get All Materials with Pagination & Filtering
 export const getAllMaterials = async (req, res) => {
   try {
-    const { category, source, page = 1, limit = 10 } = req.query;
+    const { category, source, status, page = 1, limit = 10, search } = req.query;
     const filters = { status: { $ne: "Deleted" } };
 
-    if (category) filters.category = category;
-    if (source) filters.source = source;
+    // Apply filters
+    if (category && category !== "All") filters.category = category;
+    if (source && source !== "All") filters.source = source;
+    if (status && status !== "All") filters.status = status;
+    
+    // Search
+    if (search) {
+      filters.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { serialNumber: { $regex: search, $options: 'i' } }
+      ];
+    }
 
+    const total = await Material.countDocuments(filters);
     const materials = await Material.find(filters)
       .sort({ updatedAt: -1 })
       .skip((page - 1) * limit)
-      .limit(parseInt(limit));
+      .limit(parseInt(limit))
+      .populate('addedBy', 'name email');
 
-    res.status(200).json({ page, materials });
+    res.status(200).json({
+      success: true,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      total,
+      totalPages: Math.ceil(total / limit),
+      materials
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch materials",
+      error: error.message
+    });
   }
 };
 
-// Get a Single Material by ID (Exclude Deleted)
 export const getMaterialById = async (req, res) => {
   try {
-    const material = await Material.findById(req.params.id);
-    if (!material || material.status === "Deleted") {
-      return res.status(404).json({ message: "Material Not Found" });
+    const material = await Material.findOne({
+      _id: req.params.id,
+      status: { $ne: "Deleted" }
+    });
+
+    if (!material) {
+      return res.status(404).json({
+        success: false,
+        message: "Material not found"
+      });
     }
-    res.status(200).json(material);
+
+    res.status(200).json({
+      success: true,
+      material
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch material",
+      error: error.message
+    });
   }
 };

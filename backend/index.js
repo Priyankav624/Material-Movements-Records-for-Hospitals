@@ -7,8 +7,6 @@ import authRoutes from "./routes/authRoutes.js"
 import materialRoutes from "./routes/materialRoutes.js"
 import materialRequestRoutes from "./routes/materialRequestRoutes.js";
 
-import activityLogRoutes from './routes/ActivityRoutes.js';
-
 dotenv.config();
 
 const app = express();
@@ -20,7 +18,6 @@ connectDB();
 app.use("/api/auth", authRoutes);
 app.use("/api/materials", materialRoutes);
 app.use("/api/material-requests", materialRequestRoutes);
-app.use('/api/activity-logs', activityLogRoutes);
 
 app.use((err, req, res, next) => {
   console.error("Error:", err.message);
