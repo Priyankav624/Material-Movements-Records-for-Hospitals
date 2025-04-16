@@ -1,74 +1,99 @@
 import Material from "../models/material.js";
 
+
+// 🗑️ Soft Delete Material
+export const deleteMaterial = async (req, res) => {
+  try {
+    const material = await Material.findById(req.params.id);
+    if (!material) return res.status(404).json({ message: "Material Not Found" });
+
+    if (material.status === "Deleted") {
+      return res.status(400).json({ message: "Material already deleted" });
+    }
+
+    material.status = "Deleted";
+    await material.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Material marked as deleted",
+      material
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message
+    });
+  }
+};
+
+// ➕ Add Material
 export const addMaterial = async (req, res) => {
   try {
-    let { name, category, serialNumber, quantity, expiryDate, source, vendorName, vendorContact } = req.body;
-
-    // Basic validation
-    name = name?.trim();
-    if (!name || !category || !source) {
-      return res.status(400).json({
-        success: false,
-        message: "Name, category and source are required"
-      });
-    }
-
-    // Quantity validation
-    quantity = Number(quantity);
-    if (isNaN(quantity) ){
-      return res.status(400).json({
-        success: false,
-        message: "Quantity must be a number"
-      });
-    }
-
-    // Handle expiry date
-    let status = "Available";
-    if (expiryDate) {
-      const expiry = new Date(expiryDate);
-      if (expiry <= new Date()) {
-        status = "Expired";
-      }
-    }
-
-    // Generate serial number if not provided
-    serialNumber = serialNumber?.trim();
-    if (!serialNumber) {
-      const lastMaterial = await Material.findOne().sort("-createdAt");
-      serialNumber = lastMaterial ? `MAT-${lastMaterial._id}` : "MAT-1";
-    }
-
-    // Check for duplicate serial
-    const exists = await Material.findOne({ serialNumber });
-    if (exists) {
-      return res.status(400).json({
-        success: false,
-        message: "Material with this serial number already exists"
-      });
-    }
-
-    // Create material
-    const material = new Material({
+    let {
       name,
       category,
       serialNumber,
       quantity,
-      expiryDate: expiryDate || undefined, // Only set if provided
+      expiryDate,
+      source,
+      vendorName,
+      vendorContact
+    } = req.body;
+
+    name = name?.trim();
+    serialNumber = serialNumber?.trim();
+
+    if (!name || !category || !source) {
+      return res.status(400).json({ message: "Name, category and source are required" });
+    }
+
+    quantity = Number(quantity);
+    if (isNaN(quantity)) {
+      return res.status(400).json({ message: "Quantity must be a number" });
+    }
+
+    // Generate serial number if not provided
+    if (!serialNumber) {
+      const last = await Material.findOne().sort("-createdAt");
+      serialNumber = last ? `MAT-${last._id}` : "MAT-1";
+    }
+
+    const exists = await Material.findOne({ serialNumber });
+    if (exists) {
+      return res.status(400).json({ message: "Material with this serial number already exists" });
+    }
+
+    // Handle expiry logic
+    let status = "Available";
+    if (expiryDate && new Date(expiryDate) <= new Date()) {
+      status = "Expired";
+    } else if (quantity <= 0) {
+      status = "Low Stock";
+    }
+
+    const newMaterial = new Material({
+      name,
+      category,
+      serialNumber,
+      quantity,
+      expiryDate: expiryDate || undefined,
       source,
       vendorDetails: source === "Vendor" ? {
         name: vendorName,
         contact: vendorContact
       } : undefined,
       addedBy: req.user.id,
-      status: quantity <= 0 ? "Low Stock" : status
+      status
     });
 
-    await material.save();
+    await newMaterial.save();
 
     res.status(201).json({
       success: true,
       message: "Material added successfully",
-      material
+      material: newMaterial
     });
   } catch (error) {
     console.error("Error adding material:", error);
@@ -79,6 +104,7 @@ export const addMaterial = async (req, res) => {
     });
   }
 };
+
 
 export const updateMaterial = async (req, res) => {
   try {
@@ -139,39 +165,6 @@ export const updateMaterial = async (req, res) => {
   }
 };
 
-export const deleteMaterial = async (req, res) => {
-  try {
-    const material = await Material.findById(req.params.id);
-    if (!material) {
-      return res.status(404).json({
-        success: false,
-        message: "Material not found"
-      });
-    }
-
-    if (material.status === "Deleted") {
-      return res.status(400).json({
-        success: false,
-        message: "Material already deleted"
-      });
-    }
-
-    material.status = "Deleted";
-    await material.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Material deleted successfully"
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete material",
-      error: error.message
-    });
-  }
-};
-// In controllers/materialControllers.js
 export const searchMaterials = async (req, res) => {
   try {
     const { query } = req.query;
@@ -205,15 +198,27 @@ export const searchMaterials = async (req, res) => {
     });
   }
 };
+// Update the getAllMaterials controller
 export const getAllMaterials = async (req, res) => {
   try {
-    const { category, source, status, page = 1, limit = 10, search } = req.query;
+    const { category, source, status, page = 1, limit = 10, search, showExpired } = req.query;
     const filters = { status: { $ne: "Deleted" } };
 
     // Apply filters
     if (category && category !== "All") filters.category = category;
     if (source && source !== "All") filters.source = source;
     if (status && status !== "All") filters.status = status;
+    
+    // Handle expired materials filter
+    if (showExpired === "true") {
+      filters.$or = [
+        { status: "Expired" },
+        { 
+          "batches.expiryDate": { $lte: new Date() },
+          "batches.status": "active"
+        }
+      ];
+    }
     
     // Search
     if (search) {

@@ -11,6 +11,7 @@ const ManageRequests = () => {
   const [error, setError] = useState(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [selectedRequestId, setSelectedRequestId] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("All");
 
   useEffect(() => {
     fetchRequests();
@@ -76,6 +77,10 @@ const ManageRequests = () => {
     }
   };
 
+  const filteredRequests = statusFilter === "All"
+    ? requests
+    : requests.filter(req => req.status === statusFilter);
+
   if (loading) return <div className="loading">Loading requests...</div>;
   if (error) return <div className="error">{error}</div>;
 
@@ -84,11 +89,25 @@ const ManageRequests = () => {
       <ToastContainer />
       <h2>Manage Material Requests</h2>
 
-      {requests.length === 0 ? (
-        <p className="no-requests">No requests available</p>
+      <div className="filter-section">
+        <label htmlFor="statusFilter">Filter by Status: </label>
+        <select
+          id="statusFilter"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option value="All">All</option>
+          <option value="Pending">Pending</option>
+          <option value="Approved">Approved</option>
+          <option value="Rejected">Rejected</option>
+        </select>
+      </div>
+
+      {filteredRequests.length === 0 ? (
+        <p className="no-requests">No {statusFilter.toLowerCase()} requests available</p>
       ) : (
         <div className="requests-list">
-          {requests.map(request => (
+          {filteredRequests.map(request => (
             <div key={request._id} className={`request-card ${request.status.toLowerCase()}`}>
               <div className="request-header">
                 <h3>

@@ -1,8 +1,9 @@
+// MaterialInventory.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { showSuccess, showError } from "../Notification";
 import { ToastContainer } from 'react-toastify';
+import { showSuccess, showError } from "../Notification";
 import 'react-toastify/dist/ReactToastify.css';
 import "./MaterialInventory.css";
 
@@ -30,77 +31,108 @@ const MaterialInventory = () => {
         headers: { Authorization: `Bearer ${token}` },
         params: { search: searchTerm }
       });
-      
       const materialsData = response.data.materials || response.data || [];
       setMaterials(materialsData);
+      showSuccess({
+        title: "Inventory Loaded",
+        message: `Successfully loaded ${materialsData.length} materials`,
+        autoClose: 2000
+      });
     } catch (error) {
       console.error("Error fetching materials:", error);
       setError("Failed to load materials. Please try again.");
-      showError(error.response?.data?.message || "Failed to fetch materials");
+      showError({
+        title: "Load Failed",
+        message: "Could not fetch materials. Please check your connection.",
+        autoClose: 3000
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this material?")) return;
+    const materialToDelete = materials.find(m => m._id === id);
+    if (!materialToDelete) return;
     
+    if (!window.confirm(`Are you sure you want to delete "${materialToDelete.name}"? This action cannot be undone.`)) return;
+
     try {
       const token = localStorage.getItem("token");
       await axios.delete(`http://localhost:5000/api/materials/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      showSuccess("Material deleted successfully");
+      showSuccess({
+        title: "Material Deleted",
+        message: `"${materialToDelete.name}" has been successfully removed from inventory`,
+        autoClose: 2500
+      });
       fetchMaterials();
     } catch (error) {
       console.error("Error deleting material:", error);
-      showError(
-        error.response?.data?.message || 
-        "Failed to delete material. It may be referenced in existing transactions."
-      );
+      showError({
+        title: "Deletion Failed",
+        message: error.response?.data?.message ||
+          `Cannot delete "${materialToDelete.name}" as it may be referenced in existing transactions.`,
+        autoClose: 4000
+      });
     }
   };
 
   const filteredMaterials = materials.filter(material => {
-    const matchesSearch = searchTerm === "" || 
-      material.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const matchesSearch = searchTerm === "" ||
+      material.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (material.serialNumber && material.serialNumber.toLowerCase().includes(searchTerm.toLowerCase()));
-
-    const matchesStatus = statusFilter === "All" || material.status === statusFilter;
+  
+    const matchesStatus = statusFilter === "All" || 
+      (statusFilter === "Expired" 
+        ? (material.status === "Expired" || 
+           (material.batches && material.batches.some(b => 
+             b.expiryDate && new Date(b.expiryDate) <= new Date() && b.status !== "depleted")))
+        : material.status === statusFilter);
+    
     const matchesCategory = categoryFilter === "All" || material.category === categoryFilter;
     const isNotDeleted = material.status !== "Deleted";
-
+  
     return matchesSearch && matchesStatus && matchesCategory && isNotDeleted;
   });
-
-  const resetFilters = () => {
-    setSearchTerm("");
-    setStatusFilter("All");
-    setCategoryFilter("All");
-  };
 
   if (loading) return <div className="loading">Loading materials...</div>;
   if (error) return <div className="error">{error}</div>;
 
   return (
     <div className="inventory">
-      <ToastContainer />
+      <ToastContainer 
+        position="top-right"
+        newestOnTop
+        closeOnClick
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
       <h2>Inventory Management</h2>
 
       <div className="filters">
         <div className="search">
           <input
             type="text"
-            placeholder="Search materials..."
+            placeholder="Search by name or serial number..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && fetchMaterials()}
           />
-            <button 
-              onClick={resetFilters}
-              className="reset-btn"
-            >
-              Reset
-            </button>
+        
+          <button 
+            onClick={() => {
+              setSearchTerm("");
+              setStatusFilter("All");
+              setCategoryFilter("All");
+              fetchMaterials();
+            }} 
+            className="reset-btn"
+          >
+            <i className="fas fa-sync-alt"></i> Reset
+          </button>
         </div>
 
         <div className="filter-group">
@@ -153,23 +185,26 @@ const MaterialInventory = () => {
                     {material.status}
                   </span>
                 </td>
-                <td>
-                  {material.expiryDate 
-                    ? new Date(material.expiryDate).toLocaleDateString() 
-                    : "N/A"}
-                </td>
+                <td>{material.expiryDate ? new Date(material.expiryDate).toLocaleDateString() : "N/A"}</td>
                 <td className="actions">
                   <button 
-                    onClick={() => navigate(`/update-material/${material._id}`)}
+                    onClick={() => {
+                      showSuccess({
+                        title: "Editing Material",
+                        message: `Opening "${material.name}" for editing`,
+                        autoClose: 1500
+                      });
+                      navigate(`/update-material/${material._id}`);
+                    }} 
                     className="edit"
                   >
-                    Edit
+                    <i className="fas fa-edit"></i> Edit
                   </button>
                   <button 
-                    onClick={() => handleDelete(material._id)}
+                    onClick={() => handleDelete(material._id)} 
                     className="delete"
                   >
-                    Delete
+                    <i className="fas fa-trash-alt"></i> Delete
                   </button>
                 </td>
               </tr>
