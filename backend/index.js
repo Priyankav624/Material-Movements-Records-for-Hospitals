@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import authRoutes from "./routes/authRoutes.js"
 import materialRoutes from "./routes/materialRoutes.js"
 import materialRequestRoutes from "./routes/materialRequestRoutes.js";
+import movementLog from "./routes/movementLogRoutes.js";
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ connectDB();
 app.use("/api/auth", authRoutes);
 app.use("/api/materials", materialRoutes);
 app.use("/api/material-requests", materialRequestRoutes);
+app.use("/api/movement-logs", movementLog); 
 
 app.use((err, req, res, next) => {
   console.error("Error:", err.message);

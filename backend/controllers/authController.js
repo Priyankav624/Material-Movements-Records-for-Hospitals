@@ -51,3 +51,20 @@ export const createUser = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
+export const getUsers = async (req, res) => {
+  try {
+    const roles = req.query.role; // Can be array or string
+    let query = {};
+
+    if (roles) {
+      query.role = Array.isArray(roles) ? { $in: roles } : roles;
+    }
+
+    const users = await User.find(query).select('-password'); // Exclude passwords
+    res.json({ users });
+  } catch (error) {
+    console.error("Get Users Error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};

@@ -70,6 +70,12 @@ const MaterialInventory = () => {
     return matchesSearch && matchesStatus && matchesCategory && isNotDeleted;
   });
 
+  const resetFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("All");
+    setCategoryFilter("All");
+  };
+
   if (loading) return <div className="loading">Loading materials...</div>;
   if (error) return <div className="error">{error}</div>;
 
@@ -86,7 +92,12 @@ const MaterialInventory = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <button onClick={fetchMaterials}>Search</button>
+            <button 
+              onClick={resetFilters}
+              className="reset-btn"
+            >
+              Reset
+            </button>
         </div>
 
         <div className="filter-group">

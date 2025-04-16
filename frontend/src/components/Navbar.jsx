@@ -35,13 +35,17 @@ const handleLogout = async () => {
       { name: "Dashboard", path: "/adminHome" },
       { name: "Create Users", path: "/createusers" },
       { name: "Approve Requests", path: "/manage-requests" },
+      { name: "Movement Logs", path: "/logs" },
+      { name: "Track Issued Items", path: "/track-issued" }
     ],
     "Store Manager": [
       { name: "Dashboard", path: "/storeHome" },
       { name: "Add Material", path: "/material-entry" },
       { name: "Manage Inventory", path: "/inventory" },
       { name: "View Materials", path: "/materials" },
-      { name: "Approve Requests", path: "/manage-requests" }
+      { name: "Approve Requests", path: "/manage-requests" },
+      { name: "Movement Logs", path: "/logs" },
+      { name: "Track Issued Items", path: "/track-issued" }
     ],
     "Doctor": [
       { name: "Dashboard", path: "/doctorHome" },
