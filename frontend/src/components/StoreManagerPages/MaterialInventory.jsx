@@ -54,7 +54,10 @@ const MaterialInventory = () => {
       fetchMaterials();
     } catch (error) {
       console.error("Error deleting material:", error);
-      showError(error.response?.data?.message || "Failed to delete material");
+      showError(
+        error.response?.data?.message || 
+        "Failed to delete material. It may be referenced in existing transactions."
+      );
     }
   };
 

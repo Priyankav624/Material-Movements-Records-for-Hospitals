@@ -1,24 +1,37 @@
 import express from "express";
-import { addMaterial, updateMaterial, deleteMaterial, getAllMaterials, getMaterialById } from "../controllers/materialContollers.js";
+import { 
+  addMaterial, 
+  updateMaterial, 
+  deleteMaterial, 
+  getAllMaterials, 
+  getMaterialById,
+  getExpiringMaterials,
+  addMaterialBatch,
+  updateMaterialBatch,
+  disposeMaterial,
+  searchMaterials
+} from "../controllers/materialContollers.js";
 import {authMiddleware} from "../middlewares/authMiddleware.js";
 import {roleMiddleware} from "../middlewares/roleMiddleware.js";
 
 const router = express.Router();
 
-// Add Material (Only Store Manager)
+// Basic Material CRUD
 router.post("/", authMiddleware, roleMiddleware(["Store Manager"]), addMaterial);
-
-// Update Material (Only Store Manager)
 router.put("/:id", authMiddleware, roleMiddleware(["Store Manager"]), updateMaterial);
-
-// Delete Material (Only Admin & Store Manager)
+router.get('/search', authMiddleware, searchMaterials);
 router.delete("/:id", authMiddleware, roleMiddleware(["Admin", "Store Manager"]), deleteMaterial);
-
-// Get All Materials (Admin, Store Manager, Doctor, Staff)
 router.get("/", authMiddleware, roleMiddleware(["Admin", "Store Manager", "Doctor", "Staff"]), getAllMaterials);
-
-// Get Single Material by ID (Admin, Store Manager, Doctor, Staff)
 router.get("/:id", authMiddleware, roleMiddleware(["Admin", "Store Manager", "Doctor", "Staff"]), getMaterialById);
 
-export default router;
+// Batch Management
+router.post("/:id/batches", authMiddleware, roleMiddleware(["Store Manager"]), addMaterialBatch);
+router.put("/:id/batches/:batchId", authMiddleware, roleMiddleware(["Store Manager"]), updateMaterialBatch);
 
+// Disposal/Waste Management
+router.post("/:id/dispose", authMiddleware, roleMiddleware(["Store Manager"]), disposeMaterial);
+
+// Alert Endpoints
+router.get("/alerts/expiring", authMiddleware, roleMiddleware(["Admin", "Store Manager"]), getExpiringMaterials);
+
+export default router;

@@ -171,7 +171,40 @@ export const deleteMaterial = async (req, res) => {
     });
   }
 };
+// In controllers/materialControllers.js
+export const searchMaterials = async (req, res) => {
+  try {
+    const { query } = req.query;
+    
+    if (!query || query.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: "Search query is required"
+      });
+    }
 
+    const materials = await Material.find(
+      { 
+        $text: { $search: query },
+        status: { $ne: "Deleted" }
+      },
+      { score: { $meta: "textScore" } }
+    )
+    .sort({ score: { $meta: "textScore" } })
+    .limit(20);
+
+    res.status(200).json({
+      success: true,
+      materials
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to search materials",
+      error: error.message
+    });
+  }
+};
 export const getAllMaterials = async (req, res) => {
   try {
     const { category, source, status, page = 1, limit = 10, search } = req.query;
@@ -214,6 +247,64 @@ export const getAllMaterials = async (req, res) => {
   }
 };
 
+export const updateMaterialBatch = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  
+  try {
+    const material = await Material.findById(req.params.id).session(session);
+    if (!material) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({
+        success: false,
+        message: "Material not found"
+      });
+    }
+
+    const batchIndex = material.batches.findIndex(b => b._id.toString() === req.params.batchId);
+    if (batchIndex === -1) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({
+        success: false,
+        message: "Batch not found"
+      });
+    }
+
+    const batch = material.batches[batchIndex];
+    const { quantity, expiryDate, status } = req.body;
+
+    // Update batch fields
+    if (quantity !== undefined) batch.quantity = Number(quantity);
+    if (expiryDate !== undefined) batch.expiryDate = expiryDate;
+    if (status !== undefined) batch.status = status;
+
+    // Update material status
+    updateMaterialStatus(material);
+
+    await material.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    res.status(200).json({
+      success: true,
+      message: "Batch updated successfully",
+      material
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    res.status(500).json({
+      success: false,
+      message: "Failed to update batch",
+      error: error.message
+    });
+  }
+};
+
+
 export const getMaterialById = async (req, res) => {
   try {
     const material = await Material.findOne({
@@ -246,6 +337,270 @@ export const getMaterialById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch material",
+      error: error.message
+    });
+  }
+};
+
+export const addMaterialBatch = async (req, res) => {
+  try {
+    const material = await Material.findById(req.params.id);
+    if (!material) {
+      return res.status(404).json({
+        success: false,
+        message: "Material not found"
+      });
+    }
+
+    const { batchNumber, quantity, expiryDate, manufacturingDate, supplier, purchasePrice } = req.body;
+
+    // Validate batch
+    if (!batchNumber || !quantity) {
+      return res.status(400).json({
+        success: false,
+        message: "Batch number and quantity are required"
+      });
+    }
+
+    // Check for duplicate batch
+    if (material.batches.some(b => b.batchNumber === batchNumber)) {
+      return res.status(400).json({
+        success: false,
+        message: "Batch number already exists"
+      });
+    }
+
+    // Add new batch
+    material.batches.push({
+      batchNumber,
+      quantity: Number(quantity),
+      expiryDate: expiryDate || undefined,
+      manufacturingDate: manufacturingDate || undefined,
+      supplier,
+      purchasePrice: purchasePrice || undefined,
+      status: 'active'
+    });
+
+    // Update material status based on batches
+    updateMaterialStatus(material);
+
+    await material.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Batch added successfully",
+      material
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to add batch",
+      error: error.message
+    });
+  }
+};
+
+function updateMaterialStatus(material) {
+  const now = new Date();
+  
+  // Check for expired batches
+  const hasExpired = material.batches.some(b => 
+    b.expiryDate && new Date(b.expiryDate) <= now
+  );
+  
+  // Check for low stock (sum of all batches)
+  const totalQty = material.batches.reduce((sum, b) => sum + b.quantity, 0);
+  
+  if (hasExpired) {
+    material.status = 'Expired';
+  } else if (totalQty === 0) {
+    material.status = 'Issued';
+  } else if (material.minStockLevel && totalQty <= material.minStockLevel) {
+    material.status = 'Low Stock';
+  } else {
+    material.status = 'Available';
+  }
+}
+
+
+// Updated disposeMaterial in controllers/materialControllers.js
+export const disposeMaterial = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  
+  try {
+    const { materialId, quantity, reason, disposalMethod, batchNumber } = req.body;
+    
+    // Validate input
+    if (!materialId || !quantity || quantity <= 0 || !reason || !disposalMethod) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid input data" 
+      });
+    }
+
+    const material = await Material.findById(materialId).session(session);
+    if (!material) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ 
+        success: false, 
+        message: "Material not found" 
+      });
+    }
+
+    // Check if material can be disposed
+    if (material.status === 'Deleted') {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ 
+        success: false, 
+        message: "Cannot dispose a deleted material" 
+      });
+    }
+
+    let updatedQuantity = 0;
+    
+    // Handle batch disposal
+    if (batchNumber && material.batches?.length > 0) {
+      const batch = material.batches.find(b => b.batchNumber === batchNumber);
+      if (!batch) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(404).json({ 
+          success: false, 
+          message: "Batch not found" 
+        });
+      }
+
+      if (batch.quantity < quantity) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({ 
+          success: false, 
+          message: `Insufficient quantity in batch. Only ${batch.quantity} available` 
+        });
+      }
+
+      batch.quantity -= quantity;
+      updatedQuantity = batch.quantity;
+      
+      if (batch.quantity === 0) {
+        batch.status = 'depleted';
+      }
+    } 
+    // Handle non-batch disposal
+    else {
+      if (material.quantity < quantity) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({ 
+          success: false, 
+          message: `Insufficient stock. Only ${material.quantity} available` 
+        });
+      }
+      material.quantity -= quantity;
+      updatedQuantity = material.quantity;
+    }
+
+    // Update material status only if all quantity is disposed
+    if (updatedQuantity === 0) {
+      material.status = 'Disposed';
+    }
+
+    // Create disposal log
+    const movementLog = new MovementLog({
+      materialId,
+      quantity,
+      action: 'Disposed',
+      from: 'Inventory',
+      purpose: reason,
+      disposalMethod,
+      performedBy: req.user.id,
+      batchNumber: batchNumber || undefined,
+      notes: `Disposed due to: ${reason}. Method: ${disposalMethod}`
+    });
+
+    await Promise.all([
+      material.save({ session }),
+      movementLog.save({ session })
+    ]);
+
+    await session.commitTransaction();
+    session.endSession();
+
+    res.status(201).json({ 
+      success: true, 
+      message: "Material disposal recorded successfully",
+      material,
+      movementLog
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error("Error disposing material:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to record disposal",
+      error: error.message 
+    });
+  }
+};
+
+export const getExpiringMaterials = async (req, res) => {
+  try {
+    const { days = 30 } = req.query;
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() + Number(days));
+
+    // Find materials with batches expiring soon
+    const expiringMaterials = await Material.aggregate([
+      { $unwind: "$batches" },
+      { 
+        $match: { 
+          "batches.expiryDate": { 
+            $lte: thresholdDate,
+            $gt: new Date() // Not expired yet
+          },
+          "batches.status": "active"
+        } 
+      },
+      {
+        $group: {
+          _id: "$_id",
+          name: { $first: "$name" },
+          category: { $first: "$category" },
+          batches: {
+            $push: {
+              batchNumber: "$batches.batchNumber",
+              quantity: "$batches.quantity",
+              expiryDate: "$batches.expiryDate",
+              daysUntilExpiry: {
+                $ceil: {
+                  $divide: [
+                    { $subtract: ["$batches.expiryDate", new Date()] },
+                    1000 * 60 * 60 * 24 // Milliseconds to days
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      { $sort: { "batches.daysUntilExpiry": 1 } }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      count: expiringMaterials.length,
+      expiringMaterials
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch expiring materials",
       error: error.message
     });
   }
